@@ -96,6 +96,14 @@ const settings = definePluginSettings({
         default: 5,
         stickToMarkers: true
     },
+    bannerStyle: {
+        type: OptionType.SELECT,
+        description: "Outline = bold text with a colored outline, no box (best over gameplay). Card = gradient box with avatar.",
+        options: [
+            { label: "Outline text (over gameplay)", value: "outline", default: true },
+            { label: "Card (gradient box + avatar)", value: "card" }
+        ]
+    },
     showInDiscordBanner: {
         type: OptionType.BOOLEAN,
         description: "Show the banner inside the Discord window.",
@@ -119,6 +127,7 @@ const settings = definePluginSettings({
     bannerColor1: { type: OptionType.CUSTOM, default: "#5865f2" },
     bannerColor2: { type: OptionType.CUSTOM, default: "#9b59ff" },
     bannerTextColor: { type: OptionType.CUSTOM, default: "#ffffff" },
+    bannerOutlineColor: { type: OptionType.CUSTOM, default: "#ff36c4" },
 
     // ---- Custom UI ----
     sound: {
@@ -272,9 +281,11 @@ async function playAlert(alert: Alert) {
                     displayText: alert.displayText,
                     avatarUrl: alert.avatarUrl,
                     durationMs,
+                    style: settings.store.bannerStyle || "outline",
                     color1: settings.store.bannerColor1 || "#5865f2",
                     color2: settings.store.bannerColor2 || "#9b59ff",
-                    textColor: settings.store.bannerTextColor || "#ffffff"
+                    textColor: settings.store.bannerTextColor || "#ffffff",
+                    outlineColor: settings.store.bannerOutlineColor || "#ff36c4"
                 })
             );
         } catch (e) {
@@ -438,7 +449,32 @@ const STYLE = `
     font-size: 14px; opacity: .96; word-break: break-word;
     max-height: 84px; overflow: hidden;
 }
+#${ROOT_ID} .da-banner.da-outline {
+    background: none !important; box-shadow: none !important;
+    padding: 0; display: block; text-align: center; max-width: 80%;
+}
+#${ROOT_ID} .da-oname {
+    font-weight: 900; font-size: 30px; line-height: 1.15;
+    margin-bottom: 4px; word-break: break-word;
+}
+#${ROOT_ID} .da-omsg {
+    font-weight: 800; font-size: 20px; line-height: 1.2;
+    word-break: break-word; max-height: 120px; overflow: hidden;
+}
 `;
+
+// Builds a solid text outline (+ soft drop shadow) out of layered text-shadows —
+// works everywhere, unlike -webkit-text-stroke which renders text hollow.
+function outlineShadow(color: string, size: number): string {
+    const shadows: string[] = [];
+    for (let dx = -size; dx <= size; dx++) {
+        for (let dy = -size; dy <= size; dy++) {
+            if (dx || dy) shadows.push(`${dx}px ${dy}px 0 ${color}`);
+        }
+    }
+    shadows.push("0 3px 8px rgba(0,0,0,.55)");
+    return shadows.join(", ");
+}
 
 function ensureRoot(): HTMLElement {
     if (!document.getElementById(STYLE_ID)) {
@@ -460,33 +496,57 @@ function showBanner(alert: Alert) {
     const root = ensureRoot();
     root.innerHTML = "";
 
+    const style = settings.store.bannerStyle || "outline";
+    const tc = settings.store.bannerTextColor || "#ffffff";
+    const oc = settings.store.bannerOutlineColor || "#ff36c4";
+
     const banner = document.createElement("div");
     banner.className = "da-banner";
-    banner.style.background = `linear-gradient(135deg, ${settings.store.bannerColor1 || "#5865f2"}, ${settings.store.bannerColor2 || "#9b59ff"})`;
-    banner.style.color = settings.store.bannerTextColor || "#ffffff";
 
-    const img = document.createElement("img");
-    img.className = "da-avatar";
-    img.src = alert.avatarUrl;
-    img.onerror = () => { img.src = "https://cdn.discordapp.com/embed/avatars/0.png"; };
+    if (style === "outline") {
+        banner.classList.add("da-outline");
 
-    const body = document.createElement("div");
-    body.className = "da-body";
+        const name = document.createElement("div");
+        name.className = "da-oname";
+        name.textContent = alert.name;
+        name.style.color = tc;
+        name.style.textShadow = outlineShadow(oc, 2); // accent outline on the name
 
-    const tag = document.createElement("div");
-    tag.className = "da-tag";
-    tag.textContent = "New message!";
+        const msg = document.createElement("div");
+        msg.className = "da-omsg";
+        msg.textContent = alert.displayText;
+        msg.style.color = tc;
+        msg.style.textShadow = outlineShadow("#14143c", 2); // dark outline keeps the message readable
 
-    const name = document.createElement("div");
-    name.className = "da-name";
-    name.textContent = alert.name;
+        banner.append(name, msg);
+    } else {
+        banner.style.background = `linear-gradient(135deg, ${settings.store.bannerColor1 || "#5865f2"}, ${settings.store.bannerColor2 || "#9b59ff"})`;
+        banner.style.color = tc;
 
-    const msg = document.createElement("div");
-    msg.className = "da-msg";
-    msg.textContent = alert.displayText;
+        const img = document.createElement("img");
+        img.className = "da-avatar";
+        img.src = alert.avatarUrl;
+        img.onerror = () => { img.src = "https://cdn.discordapp.com/embed/avatars/0.png"; };
 
-    body.append(tag, name, msg);
-    banner.append(img, body);
+        const body = document.createElement("div");
+        body.className = "da-body";
+
+        const tag = document.createElement("div");
+        tag.className = "da-tag";
+        tag.textContent = "New message!";
+
+        const name = document.createElement("div");
+        name.className = "da-name";
+        name.textContent = alert.name;
+
+        const msg = document.createElement("div");
+        msg.className = "da-msg";
+        msg.textContent = alert.displayText;
+
+        body.append(tag, name, msg);
+        banner.append(img, body);
+    }
+
     root.append(banner);
 
     void banner.offsetWidth; // force reflow so the transition plays
@@ -577,6 +637,7 @@ function ColorPicker() {
     const [c1, setC1] = React.useState(settings.store.bannerColor1 || "#5865f2");
     const [c2, setC2] = React.useState(settings.store.bannerColor2 || "#9b59ff");
     const [tc, setTc] = React.useState(settings.store.bannerTextColor || "#ffffff");
+    const [oc, setOc] = React.useState(settings.store.bannerOutlineColor || "#ff36c4");
 
     const field = (label: string, value: string, set: (v: string) => void, key: string) => (
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
@@ -593,32 +654,36 @@ function ColorPicker() {
         </div>
     );
 
+    // text-shadow outline preview (matches the "outline" banner style)
+    const ring = (color: string) =>
+        ["-2px -2px", "2px -2px", "-2px 2px", "2px 2px", "0 -2px", "0 2px", "-2px 0", "2px 0"]
+            .map(o => `${o} 0 ${color}`).join(", ") + ", 0 3px 8px rgba(0,0,0,.55)";
+
     return (
         <div style={{ marginBottom: 8 }}>
             <Forms.FormTitle tag="h5">Banner colors</Forms.FormTitle>
-            {field("Gradient start", c1, setC1, "bannerColor1")}
-            {field("Gradient end", c2, setC2, "bannerColor2")}
+            <Forms.FormText style={{ marginBottom: 8 }}>
+                Text & outline colors are used by the <b>Outline</b> style; gradient colors by the <b>Card</b> style.
+            </Forms.FormText>
             {field("Text color", tc, setTc, "bannerTextColor")}
-            <div
-                style={{
-                    marginTop: 10,
-                    padding: "14px 18px",
-                    borderRadius: 12,
-                    background: `linear-gradient(135deg, ${c1}, ${c2})`,
-                    color: tc,
-                    fontWeight: 700
-                }}
-            >
-                New message! — preview
+            {field("Text border / outline color", oc, setOc, "bannerOutlineColor")}
+            {field("Gradient start (card style)", c1, setC1, "bannerColor1")}
+            {field("Gradient end (card style)", c2, setC2, "bannerColor2")}
+            <div style={{ marginTop: 10, padding: 16, borderRadius: 12, background: "#11131a", textAlign: "center" }}>
+                <div style={{ color: tc, fontWeight: 900, fontSize: 24, textShadow: ring(oc) }}>Five เปย์ให้ ฿20</div>
+                <div style={{ color: tc, fontWeight: 800, fontSize: 16, marginTop: 4, textShadow: ring("#14143c") }}>
+                    ขอบคุณสำหรับการสนับสนุน
+                </div>
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                 <Button
                     size={Button.Sizes?.SMALL}
                     onClick={() => {
-                        setC1("#5865f2"); setC2("#9b59ff"); setTc("#ffffff");
+                        setC1("#5865f2"); setC2("#9b59ff"); setTc("#ffffff"); setOc("#ff36c4");
                         settings.store.bannerColor1 = "#5865f2";
                         settings.store.bannerColor2 = "#9b59ff";
                         settings.store.bannerTextColor = "#ffffff";
+                        settings.store.bannerOutlineColor = "#ff36c4";
                     }}
                 >
                     Reset to default
