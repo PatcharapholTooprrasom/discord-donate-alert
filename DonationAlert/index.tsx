@@ -52,9 +52,16 @@ const settings = definePluginSettings({
     },
     ttsRate: {
         type: OptionType.SLIDER,
-        description: "TTS speech rate.",
+        description: "Reading speed (applies to both online and offline voices; 1 = normal).",
         markers: [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2],
         default: 1
+    },
+    ttsMaxSeconds: {
+        type: OptionType.SLIDER,
+        description: "Maximum time (seconds) to read a single message aloud. Reading is cut off after this.",
+        markers: [3, 5, 8, 10, 15, 20, 30],
+        default: 10,
+        stickToMarkers: true
     },
     ttsVolume: {
         type: OptionType.SLIDER,
@@ -293,17 +300,26 @@ function playSound() {
 // Text-to-speech (Web Speech API)
 // ---------------------------------------------------------------------------
 
-function playAudioUrl(url: string, volume: number): Promise<void> {
+function playAudioUrl(url: string, volume: number, rate: number, maxMs: number): Promise<void> {
     return new Promise<void>(resolve => {
         try {
             const audio = new Audio(url);
             audio.volume = Math.max(0, Math.min(1, Number(volume)));
+            try {
+                audio.playbackRate = Math.max(0.5, Math.min(4, Number(rate) || 1));
+                (audio as any).preservesPitch = true; // keep voice natural at faster speeds
+            } catch { /* older engines */ }
             let done = false;
-            const finish = () => { if (!done) { done = true; resolve(); } };
+            const finish = () => {
+                if (done) return;
+                done = true;
+                try { audio.pause(); } catch { /* ignore */ }
+                resolve();
+            };
             audio.onended = finish;
             audio.onerror = finish;
             audio.play().catch(finish);
-            setTimeout(finish, 20000);
+            setTimeout(finish, Math.max(1000, maxMs)); // hard cap on reading time
         } catch {
             resolve();
         }
@@ -337,7 +353,11 @@ function speakWebSpeech(text: string): Promise<void> {
             u.onend = finish;
             u.onerror = finish;
             window.speechSynthesis.speak(u);
-            setTimeout(finish, 20000); // safety net against the engine getting stuck
+            const maxMs = (Number(settings.store.ttsMaxSeconds) || 10) * 1000;
+            setTimeout(() => {
+                try { window.speechSynthesis.cancel(); } catch { /* ignore */ }
+                finish();
+            }, maxMs); // hard cap on reading time
         } catch {
             resolve();
         }
@@ -353,7 +373,12 @@ async function speak(text: string): Promise<void> {
             const lang = isThai(text) ? "th" : (settings.store.onlineVoice || "en");
             const dataUrl = await Native?.fetchTtsGoogle?.(lang, text);
             if (dataUrl) {
-                await playAudioUrl(dataUrl, Number(settings.store.ttsVolume));
+                await playAudioUrl(
+                    dataUrl,
+                    Number(settings.store.ttsVolume),
+                    Number(settings.store.ttsRate) || 1,
+                    (Number(settings.store.ttsMaxSeconds) || 10) * 1000
+                );
                 return;
             }
         } catch (e) {
