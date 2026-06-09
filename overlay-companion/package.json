@@ -1,0 +1,16 @@
+{
+  "name": "donation-alert-overlay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Transparent always-on-top overlay companion for the DonationAlert Vencord plugin.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^33.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["electron"]
+  }
+}

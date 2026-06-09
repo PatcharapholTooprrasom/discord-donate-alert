@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+    html, body {
+        margin: 0;
+        height: 100%;
+        background: transparent;
+        overflow: hidden;
+        /* never intercept input even if click-through is briefly off */
+        -webkit-user-select: none;
+        user-select: none;
+    }
+    #root {
+        position: fixed;
+        top: 40px;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: center;
+        pointer-events: none;
+    }
+    .da-banner {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        min-width: 420px;
+        max-width: 720px;
+        padding: 22px 28px;
+        border-radius: 18px;
+        background: linear-gradient(135deg, #5865f2, #9b59ff);
+        color: #fff;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, .55);
+        font-family: "Segoe UI", system-ui, sans-serif;
+        transform: translateY(-180%);
+        opacity: 0;
+        transition: transform .5s cubic-bezier(.2, .8, .3, 1), opacity .5s ease;
+    }
+    .da-banner.da-visible {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    .da-avatar {
+        width: 76px;
+        height: 76px;
+        border-radius: 50%;
+        flex: 0 0 auto;
+        border: 3px solid rgba(255, 255, 255, .75);
+        object-fit: cover;
+    }
+    .da-body {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    .da-tag {
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: .1em;
+        opacity: .85;
+        margin-bottom: 5px;
+    }
+    .da-name {
+        font-weight: 800;
+        font-size: 22px;
+        margin-bottom: 4px;
+    }
+    .da-msg {
+        font-size: 18px;
+        opacity: .96;
+        word-break: break-word;
+        max-height: 120px;
+        overflow: hidden;
+    }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+    const { ipcRenderer } = require("electron");
+    const root = document.getElementById("root");
+
+    const queue = [];
+    let busy = false;
+
+    ipcRenderer.on("alert", (_e, data) => {
+        queue.push(data);
+        pump();
+    });
+
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+
+    async function pump() {
+        if (busy) return;
+        busy = true;
+        try {
+            while (queue.length) await show(queue.shift());
+        } finally {
+            busy = false;
+        }
+    }
+
+    async function show(a) {
+        root.innerHTML = "";
+
+        const banner = document.createElement("div");
+        banner.className = "da-banner";
+
+        const img = document.createElement("img");
+        img.className = "da-avatar";
+        img.src = a.avatarUrl || "https://cdn.discordapp.com/embed/avatars/0.png";
+        img.onerror = () => { img.src = "https://cdn.discordapp.com/embed/avatars/0.png"; };
+
+        const body = document.createElement("div");
+        body.className = "da-body";
+
+        const tag = document.createElement("div");
+        tag.className = "da-tag";
+        tag.textContent = "New message!";
+
+        const name = document.createElement("div");
+        name.className = "da-name";
+        name.textContent = a.name || "Someone";
+
+        const msg = document.createElement("div");
+        msg.className = "da-msg";
+        msg.textContent = a.displayText || "";
+
+        body.append(tag, name, msg);
+        banner.append(img, body);
+        root.append(banner);
+
+        void banner.offsetWidth; // force reflow so the transition plays
+        banner.classList.add("da-visible");
+
+        await wait(Number(a.durationMs) || 6000);
+
+        banner.classList.remove("da-visible");
+        await wait(600);
+        root.innerHTML = "";
+    }
+</script>
+</body>
+</html>

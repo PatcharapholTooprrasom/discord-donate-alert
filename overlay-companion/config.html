@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+    body {
+        margin: 0;
+        padding: 18px;
+        font-family: "Segoe UI", system-ui, sans-serif;
+        background: #1e1f22;
+        color: #dbdee1;
+    }
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    .sub { font-size: 13px; opacity: .7; margin-bottom: 16px; }
+    h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; opacity: .6; margin: 18px 0 8px; }
+    .mon {
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 10px 12px;
+        margin-bottom: 6px;
+        border-radius: 8px;
+        border: 1px solid #3a3c41;
+        background: #2b2d31;
+        color: #dbdee1;
+        cursor: pointer;
+        font-size: 14px;
+    }
+    .mon:hover { background: #34373c; }
+    .mon.active { border-color: #5865f2; background: #3a3f6b; }
+    .row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    button.action {
+        padding: 8px 14px;
+        border-radius: 8px;
+        border: none;
+        background: #5865f2;
+        color: #fff;
+        cursor: pointer;
+        font-size: 14px;
+    }
+    button.action:hover { background: #4752c4; }
+    button.danger { background: #da373c; }
+    button.danger:hover { background: #a12828; }
+    input[type="number"] {
+        width: 90px;
+        padding: 6px 8px;
+        border-radius: 6px;
+        border: 1px solid #3a3c41;
+        background: #2b2d31;
+        color: #dbdee1;
+    }
+    .status { font-size: 13px; margin-top: 8px; }
+    .ok { color: #3ba55d; }
+    .err { color: #f23f43; }
+    label { font-size: 14px; }
+</style>
+</head>
+<body>
+<h1>Donation Alert Overlay</h1>
+<div class="sub">The overlay is running on the selected monitor. Closing this window keeps it running — use Quit to stop.</div>
+
+<h2>Monitor</h2>
+<div id="monitors"></div>
+
+<h2>Options</h2>
+<div class="row">
+    <input type="checkbox" id="clickthrough" />
+    <label for="clickthrough">Click-through (overlay never blocks clicks)</label>
+</div>
+<div class="row">
+    <label for="port">Port</label>
+    <input type="number" id="port" min="1" max="65535" />
+    <button class="action" id="savePort">Apply</button>
+</div>
+<div class="status" id="status"></div>
+
+<h2>&nbsp;</h2>
+<div class="row">
+    <button class="action" id="test">Test alert</button>
+    <button class="action danger" id="quit">Quit overlay</button>
+</div>
+
+<script>
+    const { ipcRenderer } = require("electron");
+    const monitorsEl = document.getElementById("monitors");
+    const clickEl = document.getElementById("clickthrough");
+    const portEl = document.getElementById("port");
+    const statusEl = document.getElementById("status");
+
+    let state = { displays: [], config: {} };
+
+    function render() {
+        monitorsEl.innerHTML = "";
+        state.displays.forEach(d => {
+            const b = document.createElement("button");
+            b.className = "mon" + (d.index === state.config.monitorIndex ? " active" : "");
+            b.textContent = d.label;
+            b.onclick = () => {
+                ipcRenderer.send("set-monitor", d.index);
+                state.config.monitorIndex = d.index;
+                render();
+            };
+            monitorsEl.append(b);
+        });
+        clickEl.checked = !!state.config.clickThrough;
+        portEl.value = state.config.port;
+        statusEl.innerHTML = '<span class="ok">Listening on 127.0.0.1:' + state.config.port + '</span>';
+    }
+
+    async function init() {
+        state = await ipcRenderer.invoke("get-state");
+        render();
+    }
+
+    clickEl.onchange = () => ipcRenderer.send("set-clickthrough", clickEl.checked);
+    document.getElementById("savePort").onclick = () => {
+        ipcRenderer.send("set-port", Number(portEl.value));
+        state.config.port = Number(portEl.value);
+        render();
+    };
+    document.getElementById("test").onclick = () => ipcRenderer.send("test-alert");
+    document.getElementById("quit").onclick = () => ipcRenderer.send("quit-app");
+
+    ipcRenderer.on("server-error", (_e, msg) => {
+        statusEl.innerHTML = '<span class="err">Server error: ' + msg + ' (is the port already in use?)</span>';
+    });
+
+    init();
+</script>
+</body>
+</html>
