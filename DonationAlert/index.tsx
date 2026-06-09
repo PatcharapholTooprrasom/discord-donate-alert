@@ -42,12 +42,12 @@ const settings = definePluginSettings({
     },
     onlineVoice: {
         type: OptionType.SELECT,
-        description: "Default online language/voice (Google TTS). Thai text is auto-detected and always spoken in Thai regardless of this setting.",
+        description: "Online language/voice (Google TTS). Pick 'ไทย Thai' to read EVERYTHING (including English text) with a Thai accent. Thai text is always spoken in Thai regardless of this setting.",
         options: [
-            { label: "English (US) — natural female", value: "en", default: true },
+            { label: "ไทย Thai — reads all text with a Thai accent", value: "th", default: true },
+            { label: "English (US) — natural female", value: "en" },
             { label: "English (UK)", value: "en-GB" },
-            { label: "English (AU)", value: "en-AU" },
-            { label: "ไทย Thai", value: "th" }
+            { label: "English (AU)", value: "en-AU" }
         ]
     },
     ttsRate: {
