@@ -116,6 +116,9 @@ const settings = definePluginSettings({
     selectedVoiceURI: { type: OptionType.CUSTOM, default: "" },
     soundDataUrl: { type: OptionType.CUSTOM, default: "" },
     soundFileName: { type: OptionType.CUSTOM, default: "" },
+    bannerColor1: { type: OptionType.CUSTOM, default: "#5865f2" },
+    bannerColor2: { type: OptionType.CUSTOM, default: "#9b59ff" },
+    bannerTextColor: { type: OptionType.CUSTOM, default: "#ffffff" },
 
     // ---- Custom UI ----
     sound: {
@@ -125,6 +128,10 @@ const settings = definePluginSettings({
     voice: {
         type: OptionType.COMPONENT,
         component: () => <VoicePicker />
+    },
+    colors: {
+        type: OptionType.COMPONENT,
+        component: () => <ColorPicker />
     },
     test: {
         type: OptionType.COMPONENT,
@@ -264,7 +271,10 @@ async function playAlert(alert: Alert) {
                     name: alert.name,
                     displayText: alert.displayText,
                     avatarUrl: alert.avatarUrl,
-                    durationMs
+                    durationMs,
+                    color1: settings.store.bannerColor1 || "#5865f2",
+                    color2: settings.store.bannerColor2 || "#9b59ff",
+                    textColor: settings.store.bannerTextColor || "#ffffff"
                 })
             );
         } catch (e) {
@@ -452,6 +462,8 @@ function showBanner(alert: Alert) {
 
     const banner = document.createElement("div");
     banner.className = "da-banner";
+    banner.style.background = `linear-gradient(135deg, ${settings.store.bannerColor1 || "#5865f2"}, ${settings.store.bannerColor2 || "#9b59ff"})`;
+    banner.style.color = settings.store.bannerTextColor || "#ffffff";
 
     const img = document.createElement("img");
     img.className = "da-avatar";
@@ -555,6 +567,61 @@ function SoundPicker() {
                     }}
                 >
                     Clear
+                </Button>
+            </div>
+        </div>
+    );
+}
+
+function ColorPicker() {
+    const [c1, setC1] = React.useState(settings.store.bannerColor1 || "#5865f2");
+    const [c2, setC2] = React.useState(settings.store.bannerColor2 || "#9b59ff");
+    const [tc, setTc] = React.useState(settings.store.bannerTextColor || "#ffffff");
+
+    const field = (label: string, value: string, set: (v: string) => void, key: string) => (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+            <input
+                type="color"
+                value={value}
+                style={{ width: 44, height: 28, padding: 0, border: "none", background: "none", cursor: "pointer" }}
+                onChange={e => {
+                    set(e.target.value);
+                    (settings.store as any)[key] = e.target.value;
+                }}
+            />
+            <span>{label}</span>
+        </div>
+    );
+
+    return (
+        <div style={{ marginBottom: 8 }}>
+            <Forms.FormTitle tag="h5">Banner colors</Forms.FormTitle>
+            {field("Gradient start", c1, setC1, "bannerColor1")}
+            {field("Gradient end", c2, setC2, "bannerColor2")}
+            {field("Text color", tc, setTc, "bannerTextColor")}
+            <div
+                style={{
+                    marginTop: 10,
+                    padding: "14px 18px",
+                    borderRadius: 12,
+                    background: `linear-gradient(135deg, ${c1}, ${c2})`,
+                    color: tc,
+                    fontWeight: 700
+                }}
+            >
+                New message! — preview
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                <Button
+                    size={Button.Sizes?.SMALL}
+                    onClick={() => {
+                        setC1("#5865f2"); setC2("#9b59ff"); setTc("#ffffff");
+                        settings.store.bannerColor1 = "#5865f2";
+                        settings.store.bannerColor2 = "#9b59ff";
+                        settings.store.bannerTextColor = "#ffffff";
+                    }}
+                >
+                    Reset to default
                 </Button>
             </div>
         </div>

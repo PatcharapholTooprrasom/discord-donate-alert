@@ -106,6 +106,8 @@
 
         const banner = document.createElement("div");
         banner.className = "da-banner";
+        banner.style.background = `linear-gradient(135deg, ${a.color1 || "#5865f2"}, ${a.color2 || "#9b59ff"})`;
+        banner.style.color = a.textColor || "#fff";
 
         const img = document.createElement("img");
         img.className = "da-avatar";
