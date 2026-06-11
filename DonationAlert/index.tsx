@@ -7,9 +7,11 @@
  * See CONTEXT.md and docs/adr/ in the repo for the design decisions behind this.
  */
 
+import { ChatBarButton, type ChatBarButtonFactory } from "@api/ChatButtons";
 import { definePluginSettings } from "@api/Settings";
+import { openPluginModal } from "@components/settings";
 import definePlugin, { OptionType } from "@utils/types";
-import type { PluginNative } from "@utils/types";
+import type { IconComponent, PluginNative } from "@utils/types";
 import { Button, ChannelStore, Forms, React, UserStore } from "@webpack/common";
 
 // Runs in the main process (see native.ts) — used to POST alerts to the Overlay
@@ -743,14 +745,44 @@ function VoicePicker() {
 }
 
 // ---------------------------------------------------------------------------
+// Chat bar button (next to the gift / GIF / emoji buttons)
+// ---------------------------------------------------------------------------
+
+const MegaphoneIcon: IconComponent = ({ height = 20, width = 20, className }) => (
+    <svg viewBox="0 -960 960 960" height={height} width={width} className={className}>
+        <path fill="currentColor" d="M720-440v-80h160v80H720Zm48 280-128-96 48-64 128 96-48 64Zm-80-480-48-64 128-96 48 64-128 96ZM200-200v-160h-40q-33 0-56.5-23.5T80-440v-80q0-33 23.5-56.5T160-600h160l200-120v480L320-360h-40v160h-80Zm100-280Zm260 134v-268q27 24 43.5 58.5T620-480q0 41-16.5 75.5T560-346ZM160-520v80h182l98 58v-196l-98 58H160Z" />
+    </svg>
+);
+
+const DonationAlertChatBarButton: ChatBarButtonFactory = ({ isMainChat }) => {
+    if (!isMainChat) return null;
+
+    return (
+        <ChatBarButton
+            tooltip="DonationAlert — click for settings, right-click to test"
+            onClick={() => openPluginModal(plugin)}
+            onContextMenu={triggerTestAlert}
+            buttonProps={{ "aria-haspopup": "dialog" }}
+        >
+            <MegaphoneIcon />
+        </ChatBarButton>
+    );
+};
+
+// ---------------------------------------------------------------------------
 // Plugin
 // ---------------------------------------------------------------------------
 
-export default definePlugin({
+const plugin = definePlugin({
     name: "DonationAlert",
     description: "Twitch-style donation alerts (banner + sound + TTS) when chosen users DM you.",
     authors: [{ name: "bigno", id: 0n }],
     settings,
+
+    chatBarButton: {
+        icon: MegaphoneIcon,
+        render: DonationAlertChatBarButton
+    },
 
     flux: {
         MESSAGE_CREATE({ message, channelId }: { message: any; channelId: string; }) {
@@ -792,3 +824,5 @@ export default definePlugin({
         teardownBanner();
     }
 });
+
+export default plugin;
