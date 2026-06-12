@@ -197,6 +197,11 @@ function displayName(author: any): string {
     return author?.global_name || author?.globalName || author?.username || "Someone";
 }
 
+function stickerName(message: any): string {
+    const items = message?.sticker_items || message?.stickerItems;
+    return String(items?.[0]?.name || "").trim();
+}
+
 /** Cleaned, length-capped text suitable for speaking. Returns "" when nothing should be read. */
 function buildTtsText(message: any): string {
     let text = String(message?.content || "");
@@ -210,11 +215,9 @@ function buildTtsText(message: any): string {
         .trim();
 
     if (!text) {
-        const hasMedia =
-            message?.attachments?.length ||
-            message?.sticker_items?.length ||
-            message?.stickerItems?.length ||
-            message?.embeds?.length;
+        const sticker = stickerName(message);
+        if (sticker) return `sent a sticker ${sticker}`;
+        const hasMedia = message?.attachments?.length || message?.embeds?.length;
         return hasMedia ? "sent an attachment" : "";
     }
 
@@ -226,7 +229,9 @@ function buildTtsText(message: any): string {
 function buildDisplayText(message: any): string {
     let c = String(message?.content || "").replace(/\s+/g, " ").trim();
     if (!c) {
-        if (message?.sticker_items?.length || message?.stickerItems?.length) c = "🏷️ sent a sticker";
+        const sticker = stickerName(message);
+        if (sticker) c = `🏷️ ${sticker}`;
+        else if (message?.sticker_items?.length || message?.stickerItems?.length) c = "🏷️ sent a sticker";
         else if (message?.attachments?.length) c = "📎 sent an attachment";
         else if (message?.embeds?.length) c = "🔗 sent a link";
         else c = "(no text)";
