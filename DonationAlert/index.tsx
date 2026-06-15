@@ -759,12 +759,10 @@ const MegaphoneIcon: IconComponent = ({ height = 20, width = 20, className }) =>
     </svg>
 );
 
-const DonationAlertChatBarButton: ChatBarButtonFactory = ({ isMainChat }) => {
-    if (!isMainChat) return null;
-
+const DonationAlertChatBarButton: ChatBarButtonFactory = () => {
     return (
         <ChatBarButton
-            tooltip="DonationAlert — click for settings, right-click to test"
+            tooltip="DonationAlert — click to open settings, right-click to test  [Ctrl+Shift+D]"
             onClick={() => openPluginModal(plugin)}
             onContextMenu={triggerTestAlert}
             buttonProps={{ "aria-haspopup": "dialog" }}
@@ -773,6 +771,13 @@ const DonationAlertChatBarButton: ChatBarButtonFactory = ({ isMainChat }) => {
         </ChatBarButton>
     );
 };
+
+function handleSettingsShortcut(e: KeyboardEvent) {
+    if (e.ctrlKey && e.shiftKey && e.key === "D") {
+        e.preventDefault();
+        openPluginModal(plugin);
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Plugin
@@ -820,9 +825,11 @@ const plugin = definePlugin({
 
     start() {
         ensureRoot();
+        document.addEventListener("keydown", handleSettingsShortcut);
     },
 
     stop() {
+        document.removeEventListener("keydown", handleSettingsShortcut);
         queue.length = 0;
         playing = false;
         try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
