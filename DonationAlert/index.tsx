@@ -12,7 +12,10 @@ import { definePluginSettings } from "@api/Settings";
 import { openPluginModal } from "@components/settings";
 import definePlugin, { OptionType } from "@utils/types";
 import type { IconComponent, PluginNative } from "@utils/types";
-import { Button, ChannelStore, Forms, React, UserStore } from "@webpack/common";
+import { Button } from "@components/Button";
+import { Heading } from "@components/Heading";
+import { Paragraph } from "@components/Paragraph";
+import { ChannelStore, React, UserStore } from "@webpack/common";
 
 // Runs in the main process (see native.ts) — used to POST alerts to the Overlay
 // Companion app over localhost, which bypasses Discord's renderer CSP.
@@ -148,10 +151,10 @@ const settings = definePluginSettings({
         type: OptionType.COMPONENT,
         component: () => (
             <div>
-                <Forms.FormTitle tag="h5">Test</Forms.FormTitle>
-                <Forms.FormText style={{ marginBottom: 8 }}>
+                <Heading tag="h5">Test</Heading>
+                <Paragraph style={{ marginBottom: 8 }}>
                     Fire a sample alert to tune the sound, voice, rate and volume.
-                </Forms.FormText>
+                </Paragraph>
                 <Button onClick={triggerTestAlert}>Trigger test alert</Button>
             </div>
         )
@@ -600,10 +603,10 @@ function SoundPicker() {
 
     return (
         <div style={{ marginBottom: 8 }}>
-            <Forms.FormTitle tag="h5">Alert sound</Forms.FormTitle>
-            <Forms.FormText style={{ marginBottom: 8 }}>
+            <Heading tag="h5">Alert sound</Heading>
+            <Paragraph style={{ marginBottom: 8 }}>
                 {name ? `Current sound: ${name}` : "No sound selected — the banner and TTS will still play."}
-            </Forms.FormText>
+            </Paragraph>
             <input
                 ref={inputRef}
                 type="file"
@@ -625,7 +628,7 @@ function SoundPicker() {
                 <Button onClick={() => inputRef.current?.click()}>Choose sound file…</Button>
                 <Button onClick={playSound} disabled={!settings.store.soundDataUrl}>Preview</Button>
                 <Button
-                    color={Button.Colors.RED}
+                    variant="dangerPrimary"
                     disabled={!name}
                     onClick={() => {
                         settings.store.soundDataUrl = "";
@@ -668,10 +671,10 @@ function ColorPicker() {
 
     return (
         <div style={{ marginBottom: 8 }}>
-            <Forms.FormTitle tag="h5">Banner colors</Forms.FormTitle>
-            <Forms.FormText style={{ marginBottom: 8 }}>
+            <Heading tag="h5">Banner colors</Heading>
+            <Paragraph style={{ marginBottom: 8 }}>
                 Text & outline colors are used by the <b>Outline</b> style; gradient colors by the <b>Card</b> style.
-            </Forms.FormText>
+            </Paragraph>
             {field("Text color", tc, setTc, "bannerTextColor")}
             {field("Text border / outline color", oc, setOc, "bannerOutlineColor")}
             {field("Gradient start (card style)", c1, setC1, "bannerColor1")}
@@ -684,7 +687,7 @@ function ColorPicker() {
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                 <Button
-                    size={Button.Sizes?.SMALL}
+                    size="small"
                     onClick={() => {
                         setC1("#5865f2"); setC2("#9b59ff"); setTc("#ffffff"); setOc("#ff36c4");
                         settings.store.bannerColor1 = "#5865f2";
@@ -714,7 +717,7 @@ function VoicePicker() {
 
     return (
         <div style={{ marginBottom: 8 }}>
-            <Forms.FormTitle tag="h5">TTS voice</Forms.FormTitle>
+            <Heading tag="h5">TTS voice</Heading>
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                 <select
                     value={val}
@@ -741,9 +744,9 @@ function VoicePicker() {
                 <Button onClick={() => speak("Hello, this is a voice preview.")}>Preview voice</Button>
             </div>
             {!voices.length && (
-                <Forms.FormText style={{ marginTop: 6 }}>
+                <Paragraph style={{ marginTop: 6 }}>
                     No system voices detected. Install voices in your OS settings, then reopen this panel.
-                </Forms.FormText>
+                </Paragraph>
             )}
         </div>
     );
